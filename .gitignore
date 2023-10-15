@@ -1,3 +1,5 @@
 .vscode/
 **/files/certs/
+**/secrets/
+
 inventory
