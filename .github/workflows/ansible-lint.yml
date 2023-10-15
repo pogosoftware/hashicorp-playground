@@ -8,5 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install community.general collection
+        run: ansible-galaxy collection install community.general --force
       - name: Run ansible-lint
         uses: ansible/ansible-lint@v6.20.3
