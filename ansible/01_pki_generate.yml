@@ -198,3 +198,26 @@
               with_items: "{{ common_cli_users }}"
               loop_control:
                 index_var: index
+
+    - name: PKI - Validation
+      delegate_to: localhost
+      block:
+        - name: PKI - Validation - Consul
+          block:
+            - name: 'PKI - Validation - Consul: Ensure Intermediate CA certificate is valid'
+              ansible.builtin.command: "openssl verify -CAfile {{ pki_ca_certificate_file_path }} {{ pki_consul_ca_certificate_file_path }}"
+              changed_when: consul_ca_verification_result.rc != 0
+              run_once: true
+              register: consul_ca_verification_result
+
+            - name: 'PKI - Validation - Consul: Ensure agent certificates are valid'
+              ansible.builtin.command: "openssl verify -CAfile {{ pki_ca_certificate_file_path }} -untrusted {{ pki_consul_ca_certificate_file_path }} {{ pki_consul_agent_certificate_file_path }}"
+              changed_when: consul_agent_verification_result.rc != 0
+              register: consul_agent_verification_result
+
+            - name: 'PKI - Validation - Consul: Ensure cli certificates are valid'
+              when: ansible_hostname in groups['hcp-servers']
+              ansible.builtin.command: "openssl verify -CAfile {{ pki_ca_certificate_file_path }} -untrusted {{ pki_consul_ca_certificate_file_path }} {{ pki_consul_cli_certificate_file_path }}"
+              changed_when: consul_cli_verification_result.rc != 0
+              register: consul_cli_verification_result
+              with_items: "{{ common_cli_users }}"
