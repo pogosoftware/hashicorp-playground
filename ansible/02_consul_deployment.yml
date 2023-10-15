@@ -134,3 +134,31 @@
               with_items: "{{ common_cli_users }}"
               loop_control:
                 index_var: index
+
+    - name: Consul - Gossip
+      delegate_to: localhost
+      run_once: true
+      become: false
+      block:
+        - name: 'Consul - Gossip: Ensure secrets directory exist'
+          ansible.builtin.file:
+            path: "{{ consul_secret_root_path }}"
+            state: directory
+            mode: '0755'
+
+        - name: 'Consul - Gossip: Check if Gossip encryption key file exist'
+          ansible.builtin.stat:
+            path: "{{ consul_gossip_encryption_key_file_path }}"
+          register: consul_gossip_encryption_key_info
+
+        - name: 'Consul - Gossip: Ensure Gossip encryption key exist'
+          when: not consul_gossip_encryption_key_info.stat.exists
+          ansible.builtin.copy:
+            content: "{{ lookup('community.general.random_string', length=32, base64=False) }}"
+            dest: "{{ consul_gossip_encryption_key_file_path }}"
+            mode: '755'
+
+        - name: 'Consul - Gossip: Read Gossip encryption key'
+          ansible.builtin.slurp:
+            src: "{{ consul_gossip_encryption_key_file_path }}"
+          register: consul_gossip_encryption_key_file

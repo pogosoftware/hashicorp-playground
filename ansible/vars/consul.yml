@@ -19,3 +19,6 @@ consul_cli_path: "{{ item.home_dir }}/.consul"
 consul_cli_ca_certificate_file_path: "{{ consul_cli_path }}/consul.{{ consul_datacenter }}.{{ consul_domain }}-ca.crt"
 consul_cli_certificate_file_path: "{{ consul_cli_path }}/{{ item.name }}.{{ consul_datacenter }}.{{ consul_domain }}.crt"
 consul_cli_certificate_key_file_path: "{{ consul_cli_path }}/{{ item.name }}.{{ consul_datacenter }}.{{ consul_domain }}.key"
+
+consul_secret_root_path: "{{ common_secret_root_path }}/consul"
+consul_gossip_encryption_key_file_path: "{{ consul_secret_root_path }}/gossip_encryption_key"
