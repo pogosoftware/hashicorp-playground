@@ -1,0 +1,18 @@
+---
+multipass_cloud_init_path: "~/multipass-cloud-init.yml"
+multipass_image: "jammy"
+
+multipass_ansible_user: ansible
+multipass_ansible_ssh_private_key_file: "~/.ssh/ansible"
+multipass_ssh_public_key: "~/.ssh/ansible.pub"
+
+multipass_instances:
+  hashicorp:
+    servers:
+      - hcp-server1
+      - hcp-server2
+      - hcp-server3
+    clients:
+      - hcp-client1
+      - hcp-client2
+      - hcp-client3
