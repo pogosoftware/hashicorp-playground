@@ -5,6 +5,8 @@
   become: true
 
   vars_files:
+    - vars/common.yml
+    - vars/pki.yml
     - vars/consul.yml
 
   tasks:
@@ -41,3 +43,94 @@
             - "{{ consul_data_path }}"
             - "{{ consul_logs_path }}"
             - "{{ consul_tls_path }}"
+
+    - name: Consul - Certificate
+      block:
+        - name: Consul - Certificate - Root
+          block:
+            - name: 'Consul - Certificate - Root: Read Root CA Certificate'
+              delegate_to: localhost
+              become: false
+              ansible.builtin.slurp:
+                src: "{{ pki_ca_certificate_file_path }}"
+              register: ca_certificate
+
+            - name: 'Consul - Certificate - Root: Ensure certificate exist'
+              ansible.builtin.copy:
+                dest: "{{ pki_ca_certificate_dest_file_path }}"
+                content: "{{ ca_certificate.content | b64decode }}"
+                mode: '0644'
+
+            - name: 'Consul - Certificate - Root: Trust Root CA certificate'
+              ansible.builtin.command: 'update-ca-certificates -f'
+              changed_when: update_ca_certificate.rc != 0
+              register: update_ca_certificate
+
+        - name: Consul - Certificate - Agent
+          block:
+            - name: 'Consul - Certificate - Agent: Ensure intermediate ca certificate exists'
+              ansible.builtin.copy:
+                src: "{{ pki_consul_ca_certificate_file_path }}"
+                dest: "{{ consul_ca_certificate_file_path }}"
+                owner: "{{ consul_user }}"
+                group: "{{ consul_group }}"
+                mode: '0400'
+
+            - name: 'Consul - Certificate - Agent: Ensure certificate exist'
+              ansible.builtin.copy:
+                src: "{{ pki_consul_agent_certificate_file_path }}"
+                dest: "{{ consul_agent_certificate_file_path }}"
+                owner: "{{ consul_user }}"
+                group: "{{ consul_group }}"
+                mode: '0400'
+
+            - name: 'Consul - Certificate - Agent: Ensure certificate key exist'
+              ansible.builtin.copy:
+                src: "{{ pki_consul_agent_certificate_key_file_path }}"
+                dest: "{{ consul_agent_certificate_key_file_path }}"
+                owner: "{{ consul_user }}"
+                group: "{{ consul_group }}"
+                mode: '0400'
+
+        - name: Consul - Certificate - User
+          when: ansible_hostname in groups['hcp-servers']
+          block:
+            - name: 'Consul - Certificate - User: Ensure user directories exists'
+              ansible.builtin.file:
+                path: "{{ consul_cli_path }}"
+                state: directory
+                owner: "{{ item.name }}"
+                group: "{{ item.name }}"
+                mode: '0644'
+              with_items: "{{ common_cli_users }}"
+
+            - name: 'Consul - Certificate - User: Ensure intermediate ca certificate exist'
+              ansible.builtin.copy:
+                src: "{{ pki_consul_ca_certificate_file_path }}"
+                dest: "{{ consul_cli_ca_certificate_file_path }}"
+                owner: "{{ item.name }}"
+                group: "{{ item.name }}"
+                mode: '0400'
+              with_items: "{{ common_cli_users }}"
+
+            - name: 'Consul - Certificate - User: Ensure certificate exist'
+              ansible.builtin.copy:
+                src: "{{ pki_consul_cli_certificate_file_path }}"
+                dest: "{{ consul_cli_certificate_file_path }}"
+                owner: "{{ item.name }}"
+                group: "{{ item.name }}"
+                mode: '0400'
+              with_items: "{{ common_cli_users }}"
+              loop_control:
+                index_var: index
+
+            - name: 'Consul - Certificate - User: Ensure certificate key exist'
+              ansible.builtin.copy:
+                src: "{{ pki_consul_cli_certificate_key_file_path }}"
+                dest: "{{ consul_cli_certificate_key_file_path }}"
+                owner: "{{ item.name }}"
+                group: "{{ item.name }}"
+                mode: '0400'
+              with_items: "{{ common_cli_users }}"
+              loop_control:
+                index_var: index

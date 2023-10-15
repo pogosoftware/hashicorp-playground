@@ -10,3 +10,12 @@ consul_path: /var/lib/consul
 consul_data_path: "{{ consul_path }}/data"
 consul_logs_path: "{{ consul_path }}/logs"
 consul_tls_path: "{{ consul_path }}/tls"
+
+consul_ca_certificate_file_path: "{{ consul_tls_path }}/consul.{{ consul_datacenter }}.{{ consul_domain }}-ca.crt"
+consul_agent_certificate_file_path: "{{ consul_tls_path }}/agent.{{ consul_datacenter }}.{{ consul_domain }}.crt"
+consul_agent_certificate_key_file_path: "{{ consul_tls_path }}/agent.{{ consul_datacenter }}.{{ consul_domain }}.key"
+
+consul_cli_path: "{{ item.home_dir }}/.consul"
+consul_cli_ca_certificate_file_path: "{{ consul_cli_path }}/consul.{{ consul_datacenter }}.{{ consul_domain }}-ca.crt"
+consul_cli_certificate_file_path: "{{ consul_cli_path }}/{{ item.name }}.{{ consul_datacenter }}.{{ consul_domain }}.crt"
+consul_cli_certificate_key_file_path: "{{ consul_cli_path }}/{{ item.name }}.{{ consul_datacenter }}.{{ consul_domain }}.key"
