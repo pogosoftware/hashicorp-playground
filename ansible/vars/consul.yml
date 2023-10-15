@@ -6,3 +6,7 @@ consul_user: consul
 consul_group: consul
 
 consul_config_path: /etc/consul.d
+consul_path: /var/lib/consul
+consul_data_path: "{{ consul_path }}/data"
+consul_logs_path: "{{ consul_path }}/logs"
+consul_tls_path: "{{ consul_path }}/tls"
