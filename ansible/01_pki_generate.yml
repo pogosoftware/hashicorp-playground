@@ -1,0 +1,58 @@
+---
+- name: PKI - Certificates
+  hosts: all
+  gather_facts: true
+  become: false
+
+  vars_files:
+    - vars/pki.yml
+
+  tasks:
+    - name: PKI - Requirements
+      delegate_to: localhost
+      run_once: true
+      block:
+        - name: 'PKI - Requirements: Ensure certifcate directories exists'
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: directory
+            mode: '0755'
+          with_items:
+            - "{{ pki_root_path }}"
+
+    - name: PKI - Root CA Certificate
+      delegate_to: localhost
+      run_once: true
+      block:
+        - name: 'PKI - Root CA Certificate: Ensure private key exist'
+          community.crypto.openssl_privatekey:
+            path: "{{ pki_ca_certificate_key_file_path }}"
+            curve: secp384r1
+            type: ECC
+
+        - name: 'PKI - Root CA Certificate: Ensure CSR exist'
+          community.crypto.openssl_csr_pipe:
+            privatekey_path: "{{ pki_ca_certificate_key_file_path }}"
+            common_name: "{{ pki_ca_certificate_common_name }}"
+            organization_name: "{{ pki_organization_name }}"
+            locality_name: "{{ pki_locality_name }}"
+            country_name: "{{ pki_country_name }}"
+            use_common_name_for_san: false
+            basic_constraints:
+              - "CA:TRUE"
+            basic_constraints_critical: true
+            key_usage:
+              - digitalSignature
+              - keyCertSign
+              - cRLSign
+            key_usage_critical: true
+          register: ca_csr
+
+        - name: 'PKI - Root CA Certificate: Ensure certificate exist'
+          community.crypto.x509_certificate:
+            path: "{{ pki_ca_certificate_file_path }}"
+            csr_content: "{{ ca_csr.csr }}"
+            privatekey_path: "{{ pki_ca_certificate_key_file_path }}"
+            provider: selfsigned
+            selfsigned_not_after: "{{ pki_ca_certificate_valid_for }}"
+          register: ca_certificate
