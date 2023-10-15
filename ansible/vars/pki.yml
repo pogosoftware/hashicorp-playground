@@ -1,0 +1,14 @@
+---
+pki_root_path: files/certs
+
+pki_organization_name: "Pogosoftware"
+pki_locality_name: "Wroclaw"
+pki_country_name: "PL"
+
+####################################################################################################
+### ROOT CA Certificate
+####################################################################################################
+pki_ca_certificate_common_name: "{{ pki_organization_name }} CA"
+pki_ca_certificate_file_path: "{{ pki_root_path }}/{{ pki_organization_name | lower }}-ca.crt"
+pki_ca_certificate_key_file_path: "{{ pki_root_path }}/{{ pki_organization_name | lower }}-ca.key"
+pki_ca_certificate_valid_for: '+520w10d' # 10 years

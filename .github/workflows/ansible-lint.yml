@@ -7,8 +7,14 @@ jobs:
     name: Ansible Lint # Naming the build is important to use it as a status check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Install community.general collection
         run: ansible-galaxy collection install community.general --force
+
+      - name: Install community.crypto collection
+        run: ansible-galaxy collection install community.crypto --force
+
       - name: Run ansible-lint
         uses: ansible/ansible-lint@v6.20.3
