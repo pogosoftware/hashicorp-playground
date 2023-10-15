@@ -20,15 +20,15 @@ pki_consul_root_path: "{{ pki_root_path }}/consul"
 
 ### CA Certificate
 pki_consul_ca_certificate_common_name: "Consul Intermediate CA"
-pki_consul_ca_certificate_file_path: "{{ pki_consul_root_path }}/consul-ca.crt"
-pki_consul_ca_certificate_key_file_path: "{{ pki_consul_root_path }}/consul-ca.key"
+pki_consul_ca_certificate_file_path: "{{ pki_consul_root_path }}/consul.{{ consul_datacenter }}.{{ consul_domain }}-ca.crt"
+pki_consul_ca_certificate_key_file_path: "{{ pki_consul_root_path }}/consul.{{ consul_datacenter }}.{{ consul_domain }}-ca.key"
 pki_consul_ca_certificate_valid_for: '+260w5d' # 5 years
 
 ### Agent certificate
 pki_consul_agent_root_path: "{{ pki_consul_root_path }}/{{ ansible_hostname }}"
 pki_consul_agent_certificate_common_name: "{{ consul_node_type }}.{{ consul_datacenter }}.{{ consul_domain }}"
-pki_consul_agent_certificate_file_path: "{{ pki_consul_agent_root_path }}/consul.{{ consul_datacenter }}.crt"
-pki_consul_agent_certificate_key_file_path: "{{ pki_consul_agent_root_path }}/consul.{{ consul_datacenter }}.key"
+pki_consul_agent_certificate_file_path: "{{ pki_consul_agent_root_path }}/agent.{{ consul_datacenter }}.{{ consul_domain }}.crt"
+pki_consul_agent_certificate_key_file_path: "{{ pki_consul_agent_root_path }}/agent.{{ consul_datacenter }}.{{ consul_domain }}.key"
 pki_consul_agent_certificate_valid_for: '+52w1d' # 1 year
 
 ### CLI certificate
