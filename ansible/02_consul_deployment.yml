@@ -1,0 +1,31 @@
+---
+- name: Hashicorp - Consul
+  hosts: all
+  gather_facts: true
+  become: true
+
+  vars_files:
+    - vars/consul.yml
+
+  tasks:
+    - name: Consul - Requirements
+      block:
+        - name: 'Consul - Requirements: Ensure unzip and jq are installed'
+          ansible.builtin.apt:
+            pkg:
+              - unzip
+              - jq
+            state: present
+
+        - name: 'Consul - Requirements: Ensure Consul group exist'
+          ansible.builtin.group:
+            name: "{{ consul_group }}"
+            state: present
+
+        - name: 'Consul - Requirements: Ensure Consul user exist'
+          ansible.builtin.user:
+            name: "{{ consul_user }}"
+            group: "{{ consul_group }}"
+            system: true
+            create_home: true
+            home: "{{ consul_config_path }}"
