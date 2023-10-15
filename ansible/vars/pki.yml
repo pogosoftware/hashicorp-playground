@@ -30,3 +30,10 @@ pki_consul_agent_certificate_common_name: "{{ consul_node_type }}.{{ consul_data
 pki_consul_agent_certificate_file_path: "{{ pki_consul_agent_root_path }}/consul.{{ consul_datacenter }}.crt"
 pki_consul_agent_certificate_key_file_path: "{{ pki_consul_agent_root_path }}/consul.{{ consul_datacenter }}.key"
 pki_consul_agent_certificate_valid_for: '+52w1d' # 1 year
+
+### CLI certificate
+pki_consul_cli_root_path: "{{ pki_consul_root_path }}/{{ ansible_hostname }}"
+pki_consul_cli_certificate_common_name: "cli.{{ consul_datacenter }}.{{ consul_domain }}"
+pki_consul_cli_certificate_file_path: "{{ pki_consul_cli_root_path }}/{{ item.name }}.{{ consul_datacenter }}.{{ consul_domain }}.crt"
+pki_consul_cli_certificate_key_file_path: "{{ pki_consul_cli_root_path }}/{{ item.name }}.{{ consul_datacenter }}.{{ consul_domain }}.key"
+pki_consul_cli_certificate_valid_for: '+52w1d' # 1 year
