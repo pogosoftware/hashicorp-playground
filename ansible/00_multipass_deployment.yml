@@ -1,0 +1,75 @@
+---
+- name: Multipass - Prepare machines and inventory file
+  hosts: localhost
+  connection: local
+
+  vars_files:
+    - vars/multipass.yml
+
+  tasks:
+    - name: Multipass - Requirements
+      block:
+        - name: 'Multipass - Requirements: Ensure multipass is intalled'
+          community.general.homebrew_cask:
+            name: multipass
+            state: present
+
+        - name: 'Multipass - Requirements: Ensure jmespath is installed'
+          ansible.builtin.pip:
+            name:
+              - jmespath
+            state: present
+
+    - name: 'Multipass: Ensure the cloud-init file is present'
+      ansible.builtin.template:
+        src: templates/multipass/cloud-init.yml.j2
+        dest: "{{ multipass_cloud_init_path }}"
+        mode: '0644'
+
+    - name: 'Multipass: Ensure instaces are up'
+      ansible.builtin.command: "multipass launch --name {{ item }} --cloud-init {{ multipass_cloud_init_path }} {{ multipass_image }}"
+      changed_when: multipass_output.rc == 0
+      register: multipass_output
+      with_items:
+        - "{{ multipass_instances.hashicorp.servers }}"
+        - "{{ multipass_instances.hashicorp.clients }}"
+
+    - name: 'Multipass: Ensure cloud-init file is absent'
+      ansible.builtin.file:
+        path: "{{ multipass_cloud_init_path }}"
+        state: absent
+
+    - name: 'Multipass - Hashicorp: Ensure server and client names are set as a fact'
+      ansible.builtin.set_fact:
+        hashicorp_server_names: "{{ multipass_instances.hashicorp.servers | join('\\|') }}"
+        hashicorp_client_names: "{{ multipass_instances.hashicorp.clients | join('\\|') }}"
+
+    - name: 'Multipass: Retrieve info on the running servers we have just created'
+      ansible.builtin.shell: |
+        set -o pipefail
+        multipass list | grep Running | grep '{{ hashicorp_server_names }}' | awk '{print $1,$3}'
+      changed_when: false
+      register: multipass_output_hashicorp_servers
+
+    - name: Create the multipass servers fact.
+      ansible.builtin.set_fact:
+        multipass_hashicorp_servers: "{{ multipass_hashicorp_servers | default([]) + [{'name': item.split(' ')[0], 'ip': item.split(' ')[1]}] }}"
+      with_items: "{{ multipass_output_hashicorp_servers.stdout_lines }}"
+
+    - name: Retrieve info on the running clients we've just created.
+      ansible.builtin.shell: |
+        set -o pipefail
+        multipass list | grep Running | grep '{{ hashicorp_client_names }}' | awk '{print $1,$3}'
+      changed_when: false
+      register: multipass_output_hashicorp_clients
+
+    - name: Create the multipass clients fact.
+      ansible.builtin.set_fact:
+        multipass_hashicorp_clients: "{{ multipass_hashicorp_clients | default([]) + [{'name': item.split(' ')[0], 'ip': item.split(' ')[1]}] }}"
+      loop: "{{ multipass_output_hashicorp_clients.stdout_lines }}"
+
+    - name: Ensure new dynamic inventory is created.
+      ansible.builtin.template:
+        src: templates/multipass/inventory.j2
+        dest: inventory
+        mode: "0644"

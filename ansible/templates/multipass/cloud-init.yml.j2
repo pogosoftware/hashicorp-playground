@@ -1,0 +1,7 @@
+users:
+  - default
+  - name: {{ multipass_ansible_user }}
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - {{ lookup('file', multipass_ssh_public_key) }}
