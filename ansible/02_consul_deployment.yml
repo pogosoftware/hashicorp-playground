@@ -29,3 +29,15 @@
             system: true
             create_home: true
             home: "{{ consul_config_path }}"
+
+        - name: 'Consul - Requirements: Ensure Consul directories exists'
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: directory
+            owner: "{{ consul_user }}"
+            group: "{{ consul_group }}"
+            mode: '0755'
+          with_items:
+            - "{{ consul_data_path }}"
+            - "{{ consul_logs_path }}"
+            - "{{ consul_tls_path }}"
