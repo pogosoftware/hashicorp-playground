@@ -5,6 +5,8 @@ pki_organization_name: "Pogosoftware"
 pki_locality_name: "Wroclaw"
 pki_country_name: "PL"
 
+pki_ca_certificate_dest_file_path: "/etc/ssl/certs/{{ pki_organization_name | lower }}-ca.crt"
+
 ####################################################################################################
 ### ROOT CA Certificate
 ####################################################################################################
