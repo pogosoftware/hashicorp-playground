@@ -162,3 +162,63 @@
           ansible.builtin.slurp:
             src: "{{ consul_gossip_encryption_key_file_path }}"
           register: consul_gossip_encryption_key_file
+
+    - name: Consul - Deployment
+      block:
+        - name: 'Consul - Deployment: Ensure Consul is installed'
+          ansible.builtin.unarchive:
+            src: "https://releases.hashicorp.com/consul/{{ consul_version }}/consul_{{ consul_version }}_{{ common_os_type }}_{{ common_os_arch }}.zip"
+            dest: "{{ consul_bin_path }}"
+            remote_src: true
+
+        - name: 'Consul - Deployment: Ensure gossip encryption key is set as a fact'
+          ansible.builtin.set_fact:
+            consul_gossip_encryption_key: "{{ consul_gossip_encryption_key_file.content }}"
+
+        - name: 'Consul - Deployment: general config file exist'
+          ansible.builtin.template:
+            src: consul/configs/general.hcl.j2
+            dest: "{{ consul_config_path }}/general.hcl"
+            owner: "{{ consul_user }}"
+            group: "{{ consul_group }}"
+            mode: '0600'
+
+        - name: 'Consul - Deployment: server config file exist'
+          when: ansible_hostname in groups['hcp-servers']
+          ansible.builtin.template:
+            src: consul/configs/server.hcl.j2
+            dest: "{{ consul_config_path }}/server.hcl"
+            owner: "{{ consul_user }}"
+            group: "{{ consul_group }}"
+            mode: '0600'
+
+        - name: 'Consul - Deployment: Ensure client config file exist'
+          when: ansible_hostname in groups['hcp-clients']
+          ansible.builtin.template:
+            src: consul/configs/client.hcl.j2
+            dest: "{{ consul_config_path }}/client.hcl"
+            owner: "{{ consul_user }}"
+            group: "{{ consul_group }}"
+            mode: '0600'
+
+        - name: 'Consul - Deployment: Ensure Consul service file exist'
+          ansible.builtin.template:
+            src: consul/consul.service.j2
+            dest: "{{ consul_service_path }}/consul.service"
+            owner: "{{ consul_user }}"
+            group: "{{ consul_group }}"
+            mode: '0755'
+
+        - name: 'Consul - Deployment: Ensure Consul service is enabled and reloaded'
+          ansible.builtin.systemd:
+            name: consul.service
+            enabled: true
+            state: started
+            daemon_reload: true
+
+        - name: 'Consul - Deployment: Ensure Consul is running'
+          when: ansible_hostname in groups['hcp-servers']
+          ansible.builtin.wait_for:
+            port: 8500
+            state: started
+            sleep: 5
