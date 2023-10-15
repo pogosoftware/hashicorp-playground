@@ -56,3 +56,52 @@
             provider: selfsigned
             selfsigned_not_after: "{{ pki_ca_certificate_valid_for }}"
           register: ca_certificate
+
+    - name: PKI - Consul
+      delegate_to: localhost
+      block:
+        - name: 'PKI - Consul: Ensure certs directory exist'
+          become: false
+          run_once: true
+          ansible.builtin.file:
+            path: "{{ pki_consul_root_path }}"
+            state: directory
+            mode: '0755'
+
+        - name: PKI - Consul - Intermediate CA Certificate
+          run_once: true
+          block:
+            - name: 'PKI - Consul - Intermediate CA Certificate: Ensure private key exist'
+              community.crypto.openssl_privatekey:
+                path: "{{ pki_consul_ca_certificate_key_file_path }}"
+                curve: secp384r1
+                type: ECC
+
+            - name: 'PKI - Consul - Intermediate CA Certificate: Ensure CSR exist'
+              community.crypto.openssl_csr_pipe:
+                privatekey_path: "{{ pki_consul_ca_certificate_key_file_path }}"
+                common_name: "{{ pki_consul_ca_certificate_common_name }}"
+                organization_name: "{{ pki_organization_name }}"
+                locality_name: "{{ pki_locality_name }}"
+                country_name: "{{ pki_country_name }}"
+                use_common_name_for_san: false
+                basic_constraints:
+                  - "CA:TRUE"
+                basic_constraints_critical: true
+                key_usage:
+                  - digitalSignature
+                  - keyCertSign
+                  - cRLSign
+                key_usage_critical: true
+              register: consul_ca_csr
+
+            - name: 'PKI - Consul - Intermediate CA Certificate: Ensure certificate exist'
+              community.crypto.x509_certificate:
+                path: "{{ pki_consul_ca_certificate_file_path }}"
+                csr_content: "{{ consul_ca_csr.csr }}"
+                privatekey_path: "{{ pki_consul_ca_certificate_key_file_path }}"
+                provider: ownca
+                ownca_path: "{{ pki_ca_certificate_file_path }}"
+                ownca_privatekey_path: "{{ pki_ca_certificate_key_file_path }}"
+                ownca_not_after: "{{ pki_consul_ca_certificate_valid_for }}"
+              register: consul_ca_certificate
