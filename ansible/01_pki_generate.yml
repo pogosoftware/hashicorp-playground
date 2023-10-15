@@ -57,7 +57,6 @@
             privatekey_path: "{{ pki_ca_certificate_key_file_path }}"
             provider: selfsigned
             selfsigned_not_after: "{{ pki_ca_certificate_valid_for }}"
-          register: ca_certificate
 
     - name: PKI - Consul
       delegate_to: localhost
@@ -108,7 +107,6 @@
                 ownca_path: "{{ pki_ca_certificate_file_path }}"
                 ownca_privatekey_path: "{{ pki_ca_certificate_key_file_path }}"
                 ownca_not_after: "{{ pki_consul_ca_certificate_valid_for }}"
-              register: consul_ca_certificate
 
         - name: PKI - Consul - Agent Certificate
           block:
@@ -153,7 +151,6 @@
                 ownca_path: "{{ pki_consul_ca_certificate_file_path }}"
                 ownca_privatekey_path: "{{ pki_consul_ca_certificate_key_file_path }}"
                 ownca_not_after: "{{ pki_consul_agent_certificate_valid_for }}"
-              register: consul_server_certificate
 
         - name: PKI - Consul - CLI Certificate
           when: ansible_hostname in groups['hcp-servers']
