@@ -6,6 +6,7 @@
 
   vars_files:
     - vars/common.yml
+    - vars/multipass.yml
     - vars/pki.yml
     - vars/consul.yml
 
@@ -222,3 +223,52 @@
             port: 8500
             state: started
             sleep: 5
+
+    - name: Consul - ACL
+      block:
+        - name: Consul - ACL - Boostrap
+          delegate_to: "{{ groups['hcp-servers'] | first }}"
+          run_once: true
+          block:
+            - name: 'Consul - ACL - Boostrap: Check if bootstrap token file exist'
+              delegate_to: localhost
+              become: false
+              ansible.builtin.stat:
+                path: "{{ consul_boostrap_acl_token_file_path }}"
+              register: bootstrap_token_info
+
+            - name: 'Consul - ACL - Boostrap: Bootstrap consul'
+              when: not bootstrap_token_info.stat.exists and item.name == multipass_ansible_user
+              ansible.builtin.shell: |
+                set -o pipefail
+                {{ consul_binary_file_path }} acl bootstrap -format=json | jq -r '.SecretID'
+              args:
+                executable: /bin/bash
+              environment:
+                CONSUL_HTTP_ADDR: https://localhost:8500
+                CONSUL_CACERT: "{{ consul_cli_ca_certificate_file_path }}"
+                CONSUL_CLIENT_CERT: "{{ consul_cli_certificate_file_path }}"
+                CONSUL_CLIENT_KEY: "{{ consul_cli_certificate_key_file_path }}"
+              changed_when: bootstrap_acl_cmd.rc != 0
+              register: bootstrap_acl_cmd
+              with_items: "{{ common_cli_users }}"
+
+            - name: 'Consul - ACL - Boostrap: Save boostrap token to file'
+              delegate_to: localhost
+              become: false
+              when: not bootstrap_token_info.stat.exists
+              ansible.builtin.copy:
+                content: "{{ bootstrap_acl_cmd.results[0].stdout }}"
+                dest: "{{ consul_boostrap_acl_token_file_path }}"
+                mode: "755"
+
+            - name: 'Consul - ACL - Boostrap: Read bootstrap token'
+              delegate_to: localhost
+              become: false
+              ansible.builtin.slurp:
+                src: "{{ consul_boostrap_acl_token_file_path }}"
+              register: bootstrap_token_file
+
+            - name: 'Consul - ACL - Boostrap: Ensure bootstrap token is set as a fact'
+              ansible.builtin.set_fact:
+                consul_bootstrap_token: "{{ bootstrap_token_file.content | b64decode }}"
