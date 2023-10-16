@@ -28,3 +28,4 @@ consul_cli_certificate_key_file_path: "{{ consul_cli_path }}/{{ item.name }}.{{ 
 
 consul_secret_root_path: "{{ common_secret_root_path }}/consul"
 consul_gossip_encryption_key_file_path: "{{ consul_secret_root_path }}/gossip_encryption_key"
+consul_boostrap_acl_token_file_path: "{{ consul_secret_root_path }}/bootstrap_token"
