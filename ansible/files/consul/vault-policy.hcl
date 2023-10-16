@@ -1,0 +1,7 @@
+{
+  "service": {
+    "vault": {
+      "policy": "write"
+    }
+  }
+}
