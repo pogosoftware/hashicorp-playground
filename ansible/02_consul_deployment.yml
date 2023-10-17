@@ -401,19 +401,19 @@
                 consul_agent_token: "{{ consul_tokens_file.results[0].content | b64decode }}"
                 consul_dns_requests_token: "{{ consul_tokens_file.results[1].content | b64decode }}"
 
-        - name: 'Consul - ACL: Ensure agent token is part of the configuration'
-          ansible.builtin.lineinfile:
-            path: "{{ consul_config_path }}/general.hcl"
-            regexp: '#agent   = ""'
-            line: '    agent   = "{{ consul_agent_token }}"'
-          notify: Restart Consul
+            - name: 'Consul - ACL - Tokens: Ensure agent token is part of the configuration'
+              ansible.builtin.lineinfile:
+                path: "{{ consul_config_path }}/general.hcl"
+                regexp: '#agent   = ""'
+                line: '    agent   = "{{ consul_agent_token }}"'
+              notify: Restart Consul
 
-        - name: 'Consul - ACL: Ensure dns token is part of the configuration'
-          ansible.builtin.lineinfile:
-            path: "{{ consul_config_path }}/general.hcl"
-            regexp: '#default = ""'
-            line: '    default = "{{ consul_dns_requests_token }}"'
-          notify: Restart Consul
+            - name: 'Consul - ACL - Tokens: Ensure dns token is part of the configuration'
+              ansible.builtin.lineinfile:
+                path: "{{ consul_config_path }}/general.hcl"
+                regexp: '#default = ""'
+                line: '    default = "{{ consul_dns_requests_token }}"'
+              notify: Restart Consul
 
   handlers:
     - name: Restart Consul
