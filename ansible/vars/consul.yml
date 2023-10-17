@@ -30,6 +30,10 @@ consul_secret_root_path: "{{ common_secret_root_path }}/consul"
 consul_gossip_encryption_key_file_path: "{{ consul_secret_root_path }}/gossip_encryption_key"
 consul_boostrap_acl_token_file_path: "{{ consul_secret_root_path }}/bootstrap_token"
 
+consul_token_path: "{{ consul_secret_root_path }}/tokens/{{ ansible_hostname }}"
+consul_agent_token_file_path: "{{ consul_token_path }}/agent_consul_token"
+consul_dns_requests_token_file_path: "{{ consul_token_path }}/dns_requests_consul_token"
+
 consul_policies:
   - name: consul-agent
     description: 'Consul Agent token'
@@ -39,7 +43,3 @@ consul_policies:
     description: 'Token for DNS Requests'
     src: files/consul/dns-request-policy.hcl
     dest: /tmp/dns-request-policy.hcl
-  - name: vault
-    description: 'Token for Vault agent'
-    src: files/consul/vault-policy.hcl
-    dest: /tmp/vault-policy.hcl
