@@ -415,6 +415,31 @@
                 line: '    default = "{{ consul_dns_requests_token }}"'
               notify: Restart Consul
 
+    - name: Consul - Forward DNS
+      block:
+        - name: 'Consul - Forward DNS: Ensure resolved.conf.d directory exists'
+          ansible.builtin.file:
+            path: /etc/systemd/resolved.conf.d
+            state: directory
+            owner: root
+            group: root
+            mode: '755'
+
+        - name: 'Consul - Forward DNS: Ensure Consul config for systemd-resolved exists'
+          ansible.builtin.template:
+            src: templates/consul/consul.conf.j2
+            dest: /etc/systemd/resolved.conf.d/consul.conf
+            owner: root
+            group: root
+            mode: '644'
+
+        - name: 'Consul - Forward DNS: Ensure systemd-resolved service is restarted'
+          ansible.builtin.systemd:
+            name: systemd-resolved.service
+            enabled: true
+            state: restarted
+            daemon_reload: true
+
   handlers:
     - name: Restart Consul
       ansible.builtin.service:
