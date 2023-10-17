@@ -331,3 +331,92 @@
                 path: "{{ item.dest }}"
                 state: absent
               with_items: "{{ consul_policies }}"
+
+        - name: Consul - ACL - Tokens
+          block:
+            - name: 'Consul - ACL - Tokens: Ensure token directory exist'
+              delegate_to: localhost
+              become: false
+              ansible.builtin.file:
+                path: "{{ consul_token_path }}"
+                state: directory
+                mode: '0755'
+
+            - name: 'Consul - ACL - Tokens: Check if token file exist'
+              delegate_to: localhost
+              become: false
+              ansible.builtin.stat:
+                path: "{{ item }}"
+              register: consul_tokens_info
+              with_items:
+                - "{{ consul_agent_token_file_path }}"
+                - "{{ consul_dns_requests_token_file_path }}"
+
+            - name: 'Consul - ACL - Tokens: Generate agent and dns requests tokens for all nodes'
+              when: not consul_tokens_info.results[index].stat.exists
+              delegate_to: "{{ groups['hcp-servers'] | first }}"
+              ansible.builtin.shell: |
+                set -o pipefail
+                {{ consul_binary_file_path }} acl token create -description '{{ item.description }}' -policy-name {{ item.name }} -format=json | jq -r '.SecretID'
+              args:
+                executable: /bin/bash
+              environment:
+                CONSUL_HTTP_ADDR: "{{ consul_http_addr }}"
+                CONSUL_CACERT: "{{ consul_ca_cert }}"
+                CONSUL_CLIENT_CERT: "{{ consul_client_cert }}"
+                CONSUL_CLIENT_KEY: "{{ consul_client_key }}"
+                CONSUL_HTTP_TOKEN: "{{ consul_bootstrap_token }}"
+              changed_when: consul_tokens_cmd.rc != 0
+              register: consul_tokens_cmd
+              with_items: "{{ consul_policies }}"
+              loop_control:
+                index_var: index
+
+            - name: 'Consul - ACL - Tokens: Save generated token to the file'
+              when: not consul_tokens_info.results[index].stat.exists
+              delegate_to: localhost
+              become: false
+              ansible.builtin.copy:
+                content: "{{ consul_tokens_cmd.results[index].stdout }}"
+                dest: "{{ item }}"
+                mode: "755"
+              with_items:
+                - "{{ consul_agent_token_file_path }}"
+                - "{{ consul_dns_requests_token_file_path }}"
+              loop_control:
+                index_var: index
+
+            - name: 'Consul - ACL - Tokens:  Read agent and dns requests token from the file'
+              delegate_to: localhost
+              become: false
+              ansible.builtin.slurp:
+                src: "{{ item }}"
+              register: consul_tokens_file
+              with_items:
+                - "{{ consul_agent_token_file_path }}"
+                - "{{ consul_dns_requests_token_file_path }}"
+
+            - name: 'Consul - ACL - Tokens: Ensure agent and dns requests token are set as a facts'
+              ansible.builtin.set_fact:
+                consul_agent_token: "{{ consul_tokens_file.results[0].content | b64decode }}"
+                consul_dns_requests_token: "{{ consul_tokens_file.results[1].content | b64decode }}"
+
+        - name: 'Consul - ACL: Ensure agent token is part of the configuration'
+          ansible.builtin.lineinfile:
+            path: "{{ consul_config_path }}/general.hcl"
+            regexp: '#agent   = ""'
+            line: '    agent   = "{{ consul_agent_token }}"'
+          notify: Restart Consul
+
+        - name: 'Consul - ACL: Ensure dns token is part of the configuration'
+          ansible.builtin.lineinfile:
+            path: "{{ consul_config_path }}/general.hcl"
+            regexp: '#default = ""'
+            line: '    default = "{{ consul_dns_requests_token }}"'
+          notify: Restart Consul
+
+  handlers:
+    - name: Restart Consul
+      ansible.builtin.service:
+        name: consul.service
+        state: restarted
