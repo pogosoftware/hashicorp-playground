@@ -1,0 +1,21 @@
+---
+- name: PKI - Ensure private key and csr exists
+  ansible.builtin.include_tasks:
+    file: _privatekey-csr.yml
+
+- name: PKI - Ownca - Ensure certificate exist
+  delegate_to: localhost
+  community.crypto.x509_certificate:
+    path: "{{ pki_certificate_file_path }}"
+    csr_content: "{{ pki_csr_registry.csr }}"
+    privatekey_path: "{{ pki_certificate_key_file_path }}"
+    provider: ownca
+    ownca_path: "{{ pki_ca_certificate_file_path }}"
+    ownca_privatekey_path: "{{ pki_ca_certificate_key_file_path }}"
+    ownca_not_after: "{{ pki_certificate_not_after }}"
+
+- name: PKI - Ensure certificate is valid
+  delegate_to: localhost
+  ansible.builtin.command: "openssl verify -CAfile {{ pki_ca_certificate_file_path }} {{ pki_certificate_file_path }}"
+  changed_when: certificate_verification_result_registry.rc != 0
+  register: certificate_verification_result_registry

@@ -14,210 +14,107 @@
       delegate_to: localhost
       run_once: true
       block:
-        - name: 'PKI - Requirements: Ensure certifcate directories exists'
+        - name: PKI - Requirements - Ensure certifcate directories exists
           ansible.builtin.file:
             path: "{{ item }}"
             state: directory
             mode: '0755'
           with_items:
-            - "{{ pki_root_path }}"
+            - "{{ pki_consul_root_path }}"
 
-    - name: PKI - Root CA Certificate
-      delegate_to: localhost
+    - name: PKI - Ensure CA certificate exist
       run_once: true
-      block:
-        - name: 'PKI - Root CA Certificate: Ensure private key exist'
-          community.crypto.openssl_privatekey:
-            path: "{{ pki_ca_certificate_key_file_path }}"
-            curve: secp384r1
-            type: ECC
-
-        - name: 'PKI - Root CA Certificate: Ensure CSR exist'
-          community.crypto.openssl_csr_pipe:
-            privatekey_path: "{{ pki_ca_certificate_key_file_path }}"
-            common_name: "{{ pki_ca_certificate_common_name }}"
-            organization_name: "{{ pki_organization_name }}"
-            locality_name: "{{ pki_locality_name }}"
-            country_name: "{{ pki_country_name }}"
-            use_common_name_for_san: false
-            basic_constraints:
-              - "CA:TRUE"
-            basic_constraints_critical: true
-            key_usage:
-              - digitalSignature
-              - keyCertSign
-              - cRLSign
-            key_usage_critical: true
-          register: ca_csr
-
-        - name: 'PKI - Root CA Certificate: Ensure certificate exist'
-          community.crypto.x509_certificate:
-            path: "{{ pki_ca_certificate_file_path }}"
-            csr_content: "{{ ca_csr.csr }}"
-            privatekey_path: "{{ pki_ca_certificate_key_file_path }}"
-            provider: selfsigned
-            selfsigned_not_after: "{{ pki_ca_certificate_valid_for }}"
+      ansible.builtin.include_role:
+        name: pki
+        tasks_from: self-signed
+      vars:
+        pki_certificate_file_path: "{{ pki_ca_certificate_file_path }}"
+        pki_certificate_key_file_path: "{{ pki_ca_certificate_key_file_path }}"
+        pki_common_name: "{{ pki_organization_name }} CA"
+        pki_subject_alt_name: ["DNS:*.{{ consul_datacenter }}.{{ consul_domain }}"]
+        pki_basic_constraints: "{{ pki_ca_certificate_basic_constraints }}"
+        pki_basic_constraints_critical: "{{ pki_ca_certificate_basic_constraints_critical }}"
+        pki_key_usage: "{{ pki_ca_certificate_key_usage }}"
+        pki_key_usage_critical: "{{ pki_ca_certificate_key_usage_critical }}"
+        pki_certificate_not_after: "{{ pki_ca_certificate_valid_for }}"
 
     - name: PKI - Consul
-      delegate_to: localhost
       block:
-        - name: 'PKI - Consul: Ensure certs directory exist'
-          become: false
-          ansible.builtin.file:
-            path: "{{ item }}"
-            state: directory
-            mode: '0755'
-          with_items:
-            - "{{ pki_consul_agent_root_path }}"
-            - "{{ pki_consul_cli_root_path }}"
-
-        - name: PKI - Consul - Intermediate CA Certificate
-          run_once: true
-          block:
-            - name: 'PKI - Consul - Intermediate CA Certificate: Ensure private key exist'
-              community.crypto.openssl_privatekey:
-                path: "{{ pki_consul_ca_certificate_key_file_path }}"
-                curve: secp384r1
-                type: ECC
-
-            - name: 'PKI - Consul - Intermediate CA Certificate: Ensure CSR exist'
-              community.crypto.openssl_csr_pipe:
-                privatekey_path: "{{ pki_consul_ca_certificate_key_file_path }}"
-                common_name: "{{ pki_consul_ca_certificate_common_name }}"
-                organization_name: "{{ pki_organization_name }}"
-                locality_name: "{{ pki_locality_name }}"
-                country_name: "{{ pki_country_name }}"
-                use_common_name_for_san: false
-                basic_constraints:
-                  - "CA:TRUE"
-                basic_constraints_critical: true
-                key_usage:
-                  - digitalSignature
-                  - keyCertSign
-                  - cRLSign
-                key_usage_critical: true
-              register: consul_ca_csr
-
-            - name: 'PKI - Consul - Intermediate CA Certificate: Ensure certificate exist'
-              community.crypto.x509_certificate:
-                path: "{{ pki_consul_ca_certificate_file_path }}"
-                csr_content: "{{ consul_ca_csr.csr }}"
-                privatekey_path: "{{ pki_consul_ca_certificate_key_file_path }}"
-                provider: ownca
-                ownca_path: "{{ pki_ca_certificate_file_path }}"
-                ownca_privatekey_path: "{{ pki_ca_certificate_key_file_path }}"
-                ownca_not_after: "{{ pki_consul_ca_certificate_valid_for }}"
-
-        - name: PKI - Consul - Agent Certificate
-          block:
-            - name: 'PKI - Consul - Agent Certificate: Ensure private key exist'
-              community.crypto.openssl_privatekey:
-                path: "{{ pki_consul_agent_certificate_key_file_path }}"
-                curve: secp384r1
-                type: ECC
-
-            - name: 'PKI - Consul - Agent Certificate: Ensure common name is set as a fact'
-              ansible.builtin.set_fact:
-                consul_node_type: "{{ 'server' if ansible_hostname in groups['hcp-servers'] else 'client' }}"
-
-            - name: 'PKI - Consul - Agent Certificate: Ensure CSR exist'
-              community.crypto.openssl_csr_pipe:
-                privatekey_path: "{{ pki_consul_agent_certificate_key_file_path }}"
-                common_name: "{{ pki_consul_agent_certificate_common_name }}"
-                organization_name: "{{ pki_organization_name }}"
-                locality_name: "{{ pki_locality_name }}"
-                country_name: "{{ pki_country_name }}"
-                use_common_name_for_san: false
-                basic_constraints_critical: true
-                basic_constraints:
-                  - "CA:FALSE"
-                key_usage_critical: true
-                key_usage:
-                  - digitalSignature
-                  - keyEncipherment
-                extended_key_usage_critical: true
-                extended_key_usage:
-                  - serverAuth
-                  - clientAuth
-                subject_alt_name: ["DNS:{{ pki_consul_agent_certificate_common_name }}", "DNS:localhost", "IP:127.0.0.1"]
-              register: consul_agent_csr
-
-            - name: 'PKI - Consul - Agent Certificate: Ensure certificate exist'
-              community.crypto.x509_certificate:
-                path: "{{ pki_consul_agent_certificate_file_path }}"
-                csr_content: "{{ consul_agent_csr.csr }}"
-                privatekey_path: "{{ pki_consul_agent_certificate_key_file_path }}"
-                provider: ownca
-                ownca_path: "{{ pki_consul_ca_certificate_file_path }}"
-                ownca_privatekey_path: "{{ pki_consul_ca_certificate_key_file_path }}"
-                ownca_not_after: "{{ pki_consul_agent_certificate_valid_for }}"
-
-        - name: PKI - Consul - CLI Certificate
+        - name: PKI - Consul - Ensure server certificates exist
           when: ansible_hostname in groups['hcp-servers']
-          delegate_to: localhost
-          block:
-            - name: 'PKI - Consul - CLI Certificate: Ensure private key exist'
-              community.crypto.openssl_privatekey:
-                path: "{{ pki_consul_cli_certificate_key_file_path }}"
-                curve: secp384r1
-                type: ECC
-              with_items: "{{ common_cli_users }}"
+          ansible.builtin.include_role:
+            name: pki
+            tasks_from: ownca
+          vars:
+            pki_certificate_file_path: "{{ pki_consul_agent_certificate_file_path }}"
+            pki_certificate_key_file_path: "{{ pki_consul_agent_certificate_key_file_path }}"
+            pki_common_name: "server.{{ consul_datacenter }}.{{ consul_domain }}"
+            pki_subject_alt_name: ["DNS:server.{{ consul_datacenter }}.{{ consul_domain }}", "DNS:localhost", "IP:127.0.0.1"]
+            pki_basic_constraints: "{{ pki_consul_agent_certificate_basic_constraints }}"
+            pki_basic_constraints_critical: "{{ pki_consul_agent_certificate_basic_constraints_critical }}"
+            pki_key_usage: "{{ pki_consul_agent_certificate_key_usage }}"
+            pki_key_usage_critical: "{{ pki_consul_agent_certificate_key_usage_critical }}"
+            pki_extended_key_usage: "{{ pki_consul_agent_certificate_extended_key_usage }}"
+            pki_extended_key_usage_critical: "{{ pki_consul_agent_certificate_extended_key_usage_critical }}"
+            pki_certificate_not_after: "{{ pki_ca_certificate_valid_for }}"
 
-            - name: 'PKI - Consul - CLI Certificate: Ensure CSR exist'
-              community.crypto.openssl_csr_pipe:
-                privatekey_path: "{{ pki_consul_cli_certificate_key_file_path }}"
-                common_name: "{{ pki_consul_cli_certificate_common_name }}"
-                organization_name: "{{ pki_organization_name }}"
-                locality_name: "{{ pki_locality_name }}"
-                country_name: "{{ pki_country_name }}"
-                use_common_name_for_san: false
-                basic_constraints_critical: true
-                basic_constraints:
-                  - "CA:FALSE"
-                key_usage_critical: true
-                key_usage:
-                  - digitalSignature
-                  - keyEncipherment
-                extended_key_usage_critical: true
-                extended_key_usage:
-                  - serverAuth
-                  - clientAuth
-                subject_alt_name: ["DNS:{{ pki_consul_cli_certificate_common_name }}", "DNS:localhost", "IP:127.0.0.1"]
-              register: consul_user_csr
-              with_items: "{{ common_cli_users }}"
+        - name: PKI - Consul - Ensure client certificates exist
+          when: ansible_hostname in groups['hcp-clients']
+          ansible.builtin.include_role:
+            name: pki
+            tasks_from: ownca
+          vars:
+            pki_certificate_file_path: "{{ pki_consul_agent_certificate_file_path }}"
+            pki_certificate_key_file_path: "{{ pki_consul_agent_certificate_key_file_path }}"
+            pki_common_name: "client.{{ consul_datacenter }}.{{ consul_domain }}"
+            pki_subject_alt_name: ["DNS:client.{{ consul_datacenter }}.{{ consul_domain }}", "DNS:localhost", "IP:127.0.0.1"]
+            pki_basic_constraints: "{{ pki_consul_agent_certificate_basic_constraints }}"
+            pki_basic_constraints_critical: "{{ pki_consul_agent_certificate_basic_constraints_critical }}"
+            pki_key_usage: "{{ pki_consul_agent_certificate_key_usage }}"
+            pki_key_usage_critical: "{{ pki_consul_agent_certificate_key_usage_critical }}"
+            pki_extended_key_usage: "{{ pki_consul_agent_certificate_extended_key_usage }}"
+            pki_extended_key_usage_critical: "{{ pki_consul_agent_certificate_extended_key_usage_critical }}"
+            pki_certificate_not_after: "{{ pki_ca_certificate_valid_for }}"
 
-            - name: 'PKI - Consul - CLI Certificate: Ensure certificate exist'
-              community.crypto.x509_certificate:
-                path: "{{ pki_consul_cli_certificate_file_path }}"
-                csr_content: "{{ consul_user_csr.results[index].csr }}"
-                privatekey_path: "{{ pki_consul_cli_certificate_key_file_path }}"
-                provider: ownca
-                ownca_path: "{{ pki_consul_ca_certificate_file_path }}"
-                ownca_privatekey_path: "{{ pki_consul_ca_certificate_key_file_path }}"
-                ownca_not_after: "{{ pki_consul_cli_certificate_valid_for }}"
-              with_items: "{{ common_cli_users }}"
-              loop_control:
-                index_var: index
+        - name: PKI - Consul - Ensure users certificates exist
+          when: ansible_hostname in groups['hcp-servers']
+          run_once: true
+          ansible.builtin.include_role:
+            name: pki
+            tasks_from: ownca
+          vars:
+            pki_certificate_file_path: "{{ pki_consul_cli_certificate_file_path }}"
+            pki_certificate_key_file_path: "{{ pki_consul_cli_certificate_key_file_path }}"
+            pki_common_name: "client.{{ consul_datacenter }}.{{ consul_domain }}"
+            pki_subject_alt_name: ["DNS:client.{{ consul_datacenter }}.{{ consul_domain }}", "DNS:localhost", "IP:127.0.0.1"]
+            pki_basic_constraints: "{{ pki_consul_cli_certificate_basic_constraints }}"
+            pki_basic_constraints_critical: "{{ pki_consul_cli_certificate_basic_constraints_critical }}"
+            pki_key_usage: "{{ pki_consul_cli_certificate_key_usage }}"
+            pki_key_usage_critical: "{{ pki_consul_cli_certificate_key_usage_critical }}"
+            pki_extended_key_usage: "{{ pki_consul_cli_certificate_extended_key_usage }}"
+            pki_extended_key_usage_critical: "{{ pki_consul_cli_certificate_extended_key_usage_critical }}"
+            pki_certificate_not_after: "{{ pki_consul_cli_certificate_valid_for }}"
+          with_items: "{{ common_cli_users }}"
 
-    - name: PKI - Validation
-      delegate_to: localhost
-      block:
-        - name: PKI - Validation - Consul
-          block:
-            - name: 'PKI - Validation - Consul: Ensure Intermediate CA certificate is valid'
-              ansible.builtin.command: "openssl verify -CAfile {{ pki_ca_certificate_file_path }} {{ pki_consul_ca_certificate_file_path }}"
-              changed_when: consul_ca_verification_result.rc != 0
-              run_once: true
-              register: consul_ca_verification_result
+    # - name: PKI - Validation
+    #   delegate_to: localhost
+    #   block:
+    #     - name: PKI - Validation - Consul
+    #       block:
+    #         - name: 'PKI - Validation - Consul: Ensure Intermediate CA certificate is valid'
+    #           ansible.builtin.command: "openssl verify -CAfile {{ pki_ca_certificate_file_path }} {{ pki_consul_ca_certificate_file_path }}"
+    #           changed_when: consul_ca_verification_result.rc != 0
+    #           run_once: true
+    #           register: consul_ca_verification_result
 
-            - name: 'PKI - Validation - Consul: Ensure agent certificates are valid'
-              ansible.builtin.command: "openssl verify -CAfile {{ pki_ca_certificate_file_path }} -untrusted {{ pki_consul_ca_certificate_file_path }} {{ pki_consul_agent_certificate_file_path }}"
-              changed_when: consul_agent_verification_result.rc != 0
-              register: consul_agent_verification_result
+    #         - name: 'PKI - Validation - Consul: Ensure agent certificates are valid'
+    #           ansible.builtin.command: "openssl verify -CAfile {{ pki_ca_certificate_file_path }} -untrusted {{ pki_consul_ca_certificate_file_path }} {{ pki_consul_agent_certificate_file_path }}"
+    #           changed_when: consul_agent_verification_result.rc != 0
+    #           register: consul_agent_verification_result
 
-            - name: 'PKI - Validation - Consul: Ensure cli certificates are valid'
-              when: ansible_hostname in groups['hcp-servers']
-              ansible.builtin.command: "openssl verify -CAfile {{ pki_ca_certificate_file_path }} -untrusted {{ pki_consul_ca_certificate_file_path }} {{ pki_consul_cli_certificate_file_path }}"
-              changed_when: consul_cli_verification_result.rc != 0
-              register: consul_cli_verification_result
-              with_items: "{{ common_cli_users }}"
+    #         - name: 'PKI - Validation - Consul: Ensure cli certificates are valid'
+    #           when: ansible_hostname in groups['hcp-servers']
+    #           ansible.builtin.command: "openssl verify -CAfile {{ pki_ca_certificate_file_path }} -untrusted {{ pki_consul_ca_certificate_file_path }} {{ pki_consul_cli_certificate_file_path }}"
+    #           changed_when: consul_cli_verification_result.rc != 0
+    #           register: consul_cli_verification_result
+    #           with_items: "{{ common_cli_users }}"
