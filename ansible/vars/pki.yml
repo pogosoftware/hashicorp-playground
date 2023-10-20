@@ -5,14 +5,19 @@ pki_organization_name: "Pogosoftware"
 pki_locality_name: "Wroclaw"
 pki_country_name: "PL"
 
-pki_ca_certificate_dest_file_path: "/etc/ssl/certs/{{ pki_organization_name | lower }}-ca.crt"
-
 ####################################################################################################
 ### ROOT CA Certificate
 ####################################################################################################
-pki_ca_certificate_common_name: "{{ pki_organization_name }} CA"
 pki_ca_certificate_file_path: "{{ pki_root_path }}/{{ pki_organization_name | lower }}-ca.crt"
 pki_ca_certificate_key_file_path: "{{ pki_root_path }}/{{ pki_organization_name | lower }}-ca.key"
+pki_ca_certificate_basic_constraints:
+  - "CA:TRUE"
+pki_ca_certificate_basic_constraints_critical: true
+pki_ca_certificate_key_usage:
+  - digitalSignature
+  - keyCertSign
+  - cRLSign
+pki_ca_certificate_key_usage_critical: true
 pki_ca_certificate_valid_for: '+520w10d' # 10 years
 
 ####################################################################################################
@@ -20,22 +25,34 @@ pki_ca_certificate_valid_for: '+520w10d' # 10 years
 ####################################################################################################
 pki_consul_root_path: "{{ pki_root_path }}/consul"
 
-### CA Certificate
-pki_consul_ca_certificate_common_name: "Consul Intermediate CA"
-pki_consul_ca_certificate_file_path: "{{ pki_consul_root_path }}/consul.{{ consul_datacenter }}.{{ consul_domain }}-ca.crt"
-pki_consul_ca_certificate_key_file_path: "{{ pki_consul_root_path }}/consul.{{ consul_datacenter }}.{{ consul_domain }}-ca.key"
-pki_consul_ca_certificate_valid_for: '+260w5d' # 5 years
-
-### Agent certificate
-pki_consul_agent_root_path: "{{ pki_consul_root_path }}/{{ ansible_hostname }}"
-pki_consul_agent_certificate_common_name: "{{ consul_node_type }}.{{ consul_datacenter }}.{{ consul_domain }}"
-pki_consul_agent_certificate_file_path: "{{ pki_consul_agent_root_path }}/agent.{{ consul_datacenter }}.{{ consul_domain }}.crt"
-pki_consul_agent_certificate_key_file_path: "{{ pki_consul_agent_root_path }}/agent.{{ consul_datacenter }}.{{ consul_domain }}.key"
+### Agent
+pki_consul_agent_certificate_file_path: "{{ pki_consul_root_path }}/agent.{{ ansible_hostname }}.{{ consul_datacenter }}.{{ consul_domain }}.crt"
+pki_consul_agent_certificate_key_file_path: "{{ pki_consul_root_path }}/agent.{{ ansible_hostname }}.{{ consul_datacenter }}.{{ consul_domain }}.key"
+pki_consul_agent_certificate_basic_constraints:
+  - "CA:FALSE"
+pki_consul_agent_certificate_basic_constraints_critical: true
+pki_consul_agent_certificate_key_usage:
+  - digitalSignature
+  - keyEncipherment
+pki_consul_agent_certificate_key_usage_critical: true
+pki_consul_agent_certificate_extended_key_usage:
+  - serverAuth
+  - clientAuth
+pki_consul_agent_certificate_extended_key_usage_critical: true
 pki_consul_agent_certificate_valid_for: '+52w1d' # 1 year
 
-### CLI certificate
-pki_consul_cli_root_path: "{{ pki_consul_root_path }}/{{ ansible_hostname }}"
-pki_consul_cli_certificate_common_name: "cli.{{ consul_datacenter }}.{{ consul_domain }}"
-pki_consul_cli_certificate_file_path: "{{ pki_consul_cli_root_path }}/{{ item.name }}.{{ consul_datacenter }}.{{ consul_domain }}.crt"
-pki_consul_cli_certificate_key_file_path: "{{ pki_consul_cli_root_path }}/{{ item.name }}.{{ consul_datacenter }}.{{ consul_domain }}.key"
+### CLI
+pki_consul_cli_certificate_file_path: "{{ pki_consul_root_path }}/{{ item.name }}.{{ consul_datacenter }}.{{ consul_domain }}.crt"
+pki_consul_cli_certificate_key_file_path: "{{ pki_consul_root_path }}/{{ item.name }}.{{ consul_datacenter }}.{{ consul_domain }}.key"
+pki_consul_cli_certificate_basic_constraints:
+  - "CA:FALSE"
+pki_consul_cli_certificate_basic_constraints_critical: true
+pki_consul_cli_certificate_key_usage:
+  - digitalSignature
+  - keyEncipherment
+pki_consul_cli_certificate_key_usage_critical: true
+pki_consul_cli_certificate_extended_key_usage:
+  - serverAuth
+  - clientAuth
+pki_consul_cli_certificate_extended_key_usage_critical: true
 pki_consul_cli_certificate_valid_for: '+52w1d' # 1 year

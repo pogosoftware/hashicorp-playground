@@ -1,0 +1,25 @@
+---
+- name: PKI - Ensure private key exist
+  delegate_to: localhost
+  community.crypto.openssl_privatekey:
+    path: "{{ pki_certificate_key_file_path }}"
+    curve: "{{ pki_certificate_key_curve }}"
+    type: "{{ pki_certificate_key_type }}"
+
+- name: PKI - Ensure CSR exist
+  delegate_to: localhost
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ pki_certificate_key_file_path }}"
+    common_name: "{{ pki_common_name }}"
+    organization_name: "{{ pki_organization_name }}"
+    locality_name: "{{ pki_locality_name }}"
+    country_name: "{{ pki_country_name }}"
+    use_common_name_for_san: "{{ pki_use_common_name_for_san }}"
+    basic_constraints: "{{ pki_basic_constraints }}"
+    basic_constraints_critical: "{{ pki_basic_constraints_critical }}"
+    key_usage: "{{ pki_key_usage }}"
+    key_usage_critical: "{{ pki_key_usage_critical }}"
+    extended_key_usage: "{{ pki_extended_key_usage }}"
+    extended_key_usage_critical: "{{ pki_extended_key_usage_critical }}"
+    subject_alt_name: "{{ pki_subject_alt_name }}"
+  register: pki_csr_registry

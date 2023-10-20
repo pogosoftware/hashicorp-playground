@@ -1,0 +1,7 @@
+---
+pki_certificate_key_curve: secp256r1
+pki_certificate_key_type: ECC
+
+pki_use_common_name_for_san: false
+pki_extended_key_usage: []
+pki_extended_key_usage_critical: true
