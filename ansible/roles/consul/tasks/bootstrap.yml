@@ -1,0 +1,36 @@
+---
+- name: Boostrap
+  when: consul_role == 'server'
+  delegate_to: "{{ groups['consul'] | first }}"
+  run_once: true
+  block:
+    - name: Task[bootstrap.yml] - Check if bootstrap token file exist
+      delegate_to: localhost
+      become: false
+      ansible.builtin.stat:
+        path: "{{ consul_boostrap_token_file_path }}"
+      register: bootstrap_token_info_registry
+
+    - name: Task[bootstrap.yml] - Bootstrap consul
+      when: not bootstrap_token_info_registry.stat.exists
+      ansible.builtin.shell: |
+        set -o pipefail
+        {{ consul_binary_file_path }} acl bootstrap -format=json | jq -r '.SecretID'
+      args:
+        executable: /bin/bash
+      environment:
+        CONSUL_HTTP_ADDR: "{{ consul_client_http_address }}"
+        CONSUL_CACERT: "{{ consul_client_ca_certificate_file_path }}"
+        CONSUL_CLIENT_CERT: "{{ consul_client_certificate_file_path }}"
+        CONSUL_CLIENT_KEY: "{{ consul_client_certificate_key_file_path }}"
+      changed_when: bootstrap_acl_registry.rc != 0
+      register: bootstrap_acl_registry
+
+    - name: Task[bootstrap.yml] - Save boostrap token to file
+      delegate_to: localhost
+      become: false
+      when: not bootstrap_token_info_registry.stat.exists
+      ansible.builtin.copy:
+        content: "{{ bootstrap_acl_registry.stdout }}"
+        dest: "{{ consul_boostrap_token_file_path }}"
+        mode: '755'

@@ -1,0 +1,3 @@
+---
+consul_domain: pogosoftware.lan
+consul_datacenter: hcp

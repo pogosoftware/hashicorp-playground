@@ -1,0 +1,140 @@
+---
+####################################################################################################
+### USER
+####################################################################################################
+consul_user_name: consul
+consul_user_group: consul
+consul_user_home_path: /etc/consul.d
+
+### AGENT
+consul_tls_path: "{{ consul_path }}/tls"
+consul_agent_ca_certificate_file_path: "{{ consul_tls_path }}/consul.{{ consul_datacenter }}.{{ consul_domain }}-ca.crt"
+consul_agent_certificate_file_path: "{{ consul_tls_path }}/agent.{{ consul_datacenter }}.{{ consul_domain }}.crt"
+consul_agent_certificate_key_file_path: "{{ consul_tls_path }}/agent.{{ consul_datacenter }}.{{ consul_domain }}.key"
+
+### CLIENT
+consul_client_user_name: "{{ ansible_user_name }}"
+consul_client_user_group_name: "{{ ansible_user_group }}"
+consul_client_home_path: "{{ ansible_home_path }}/.consul"
+
+consul_client_http_address: "https://127.0.0.1:{{ consul_https_port }}"
+consul_client_ca_certificate_file_path: "{{ consul_client_home_path }}/consul-ca.crt"
+consul_client_certificate_file_path: "{{ consul_client_home_path }}/consul.crt"
+consul_client_certificate_key_file_path: "{{ consul_client_home_path }}/consul.key"
+
+####################################################################################################
+### BINARY
+####################################################################################################
+consul_binary_version: 1.16.2
+consul_binary_download_url: "https://releases.hashicorp.com/consul/{{ consul_binary_version }}/consul_{{ consul_binary_version }}_{{ os_type }}_{{ os_arch }}.zip"
+consul_binary_path: /usr/local/bin
+consul_binary_file_path: "{{ consul_binary_path }}/consul"
+
+####################################################################################################
+### SERVICE
+####################################################################################################
+consul_service_path: /etc/systemd/system
+consul_service_filename: consul.service
+
+####################################################################################################
+### PATH
+####################################################################################################
+consul_path: /var/lib/consul
+consul_data_path: "{{ consul_path }}/data"
+consul_logs_path: "{{ consul_path }}/logs"
+
+####################################################################################################
+### ENCRYPTION
+####################################################################################################
+consul_secrets_path: "secrets/consul"
+consul_gossip_encryption_key_file_path: "{{ consul_secrets_path }}/gossip_encryption_key"
+consul_boostrap_acl_token_file_path: "{{ consul_secrets_path }}/bootstrap_token"
+
+####################################################################################################
+### BOOTSTRAP
+####################################################################################################
+consul_boostrap_token_file_path: "{{ consul_secrets_path }}/bootstrap_token"
+
+####################################################################################################
+### CONFIG
+####################################################################################################
+consul_domain: consul
+consul_datacenter: dc1
+
+consul_enable_local_script_checks: true
+consul_enable_script_checks: false
+
+consul_bind_addr: 0.0.0.0
+consul_client_addr: 0.0.0.0
+consul_recursors:
+  - 1.1.1.1
+  - 8.8.8.8
+
+consul_bootstrap_expect: "{{ consul_servers | length }}"
+
+### LOGS
+consul_log_level: "INFO"
+consul_log_file: "{{ consul_logs_path }}/consul.log"
+consul_log_rotate_bytes: 20971520 # 20 MB
+consul_log_rotate_duration: 24h
+consul_log_rotate_max_files: 10
+
+### PORTS
+consul_http_port: -1
+consul_https_port: 8501
+consul_grpc_tls_port: 8502
+
+### ACL
+consul_acl_enabled: true
+consul_acl_default_policy: "deny"
+consul_acl_enable_token_persistence: true
+
+### TLS
+consul_tls_verify_outgoing: true
+consul_tls_verify_incoming: true
+consul_tls_https_verify_incoming: false
+consul_tls_internal_rpc_verify_server_hostname: true
+
+### UI
+consul_ui_enabled: true
+
+### SERVICE MESH
+consul_connect_enabled: true
+
+consul_inventory_group: consul
+consul_servers: |
+  {% set _consul_servers = [] %}
+  {% for host in groups[consul_inventory_group] %}
+  {% set _consul_node_role = hostvars[host]['consul_role'] | default('server', true) %}
+  {% if _consul_node_role == 'server' %}
+  {% if _consul_servers.append(hostvars[host].ansible_host | default(hostvars[host]['ansible_default_ipv4']['address'], true)) %}{% endif %}
+  {% endif %}
+  {% endfor %}
+  {{ _consul_servers }}
+
+####################################################################################################
+### POLICIES
+####################################################################################################
+consul_policies:
+  - name: consul-agent
+    src: files/agent-policy.hcl
+    dest: /tmp/agent-policy.hcl
+  - name: dns-requests
+    src: files/dns-request-policy.hcl
+    dest: /tmp/dns-request-policy.hcl
+
+####################################################################################################
+### TOKENS
+####################################################################################################
+consul_tokens_path: "{{ consul_secrets_path }}/tokens/{{ ansible_hostname }}"
+
+consul_tokens:
+  - name: consul-agent
+    description: 'Consul Agent token'
+    policy_name: consul-agent
+    dest: "{{ consul_tokens_path }}/agent_token"
+    # limit_to: server or client
+  - name: dns-requests
+    description: 'Token for DNS Requests'
+    policy_name: dns-requests
+    dest: "{{ consul_tokens_path }}/dns_requests_token"

@@ -6,9 +6,9 @@ After=network-online.target
 
 [Service]
 Type=exec
-User={{ consul_user }}
-Group={{ consul_group }}
-ExecStart={{ consul_bin_path }}/consul agent -config-dir={{ consul_config_path }}/
+User={{ consul_user_name }}
+Group={{ consul_user_group }}
+ExecStart={{ consul_binary_file_path }} agent -config-dir={{ consul_user_home_path }}/
 ExecReload=/bin/kill --signal HUP $MAINPID
 KillMode=process
 KillSignal=SIGTERM

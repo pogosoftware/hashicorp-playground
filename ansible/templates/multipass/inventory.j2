@@ -2,12 +2,16 @@
 ansible_user={{ multipass_ansible_user }}
 ansible_ssh_private_key_file={{ multipass_ansible_ssh_private_key_file }}
 
-[hcp-servers]
+[consul:children]
+hcp_servers
+hcp_clients
+
+[hcp_servers]
 {% for i in multipass_hashicorp_servers %}
 {{ i.name }} ansible_host={{ i.ip }}
 {% endfor %}
 
-[hcp-clients]
+[hcp_clients]
 {% for i in multipass_hashicorp_clients %}
 {{ i.name }} ansible_host={{ i.ip }}
 {% endfor %}

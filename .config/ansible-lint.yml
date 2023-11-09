@@ -4,3 +4,4 @@ exclude_paths:
 skip_list:
   - run-once[task]
   - yaml[line-length]
+  - name[template]

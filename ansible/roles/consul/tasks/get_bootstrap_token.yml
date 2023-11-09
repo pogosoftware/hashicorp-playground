@@ -1,0 +1,11 @@
+---
+- name: Task[get_bootstrap_token.yml] - Read bootstrap token
+  delegate_to: localhost
+  become: false
+  ansible.builtin.slurp:
+    src: "{{ consul_boostrap_token_file_path }}"
+  register: bootstrap_token_file
+
+- name: Task[get_bootstrap_token.yml] - Ensure bootstrap token is set as a fact
+  ansible.builtin.set_fact:
+    consul_token_fact: "{{ bootstrap_token_file.content | b64decode }}"

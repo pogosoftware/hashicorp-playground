@@ -1,0 +1,27 @@
+---
+- name: Task[create_token.yml]
+  when: item.limit_to is not defined or consul_role == item.limit_to
+  block:
+    - name: "Task[create_token.yml] - Generate {{ item.name }} token"
+      delegate_to: "{{ groups['consul'] | first }}"
+      ansible.builtin.shell: |
+        set -o pipefail
+        {{ consul_binary_file_path }} acl token create -description '{{ item.description }}' -policy-name {{ item.policy_name }} -format=json | jq -r '.SecretID'
+      args:
+        executable: /bin/bash
+      environment:
+        CONSUL_HTTP_ADDR: "{{ consul_client_http_address }}"
+        CONSUL_CACERT: "{{ consul_client_ca_certificate_file_path }}"
+        CONSUL_CLIENT_CERT: "{{ consul_client_certificate_file_path }}"
+        CONSUL_CLIENT_KEY: "{{ consul_client_certificate_key_file_path }}"
+        CONSUL_HTTP_TOKEN: "{{ consul_token_fact }}"
+      changed_when: consul_tokens_cmd_registry.rc != 0
+      register: consul_tokens_cmd_registry
+
+    - name: "Task[create_token.yml] - Save {{ item.name }} token on disk"
+      delegate_to: localhost
+      become: false
+      ansible.builtin.copy:
+        content: "{{ consul_tokens_cmd_registry.stdout }}"
+        dest: "{{ item.dest }}"
+        mode: '755'
