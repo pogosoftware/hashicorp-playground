@@ -1,0 +1,27 @@
+---
+- name: Task[create_policy.yml]
+  when:
+    consul_policies_cmd_registry is not defined or
+    item.name not in consul_policies_cmd_registry.stdout
+  block:
+    - name: "Task[create_policy.yml] - Ensure {{ item.name }} policy file exist"
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: '0644'
+
+    - name: "Task[create_policy.yml] - Ensure {{ item.name }} policy exist"
+      ansible.builtin.command: "{{ consul_binary_file_path }} acl policy create -name {{ item.name }} -rules @{{ item.dest }}"
+      environment:
+        CONSUL_HTTP_ADDR: "{{ consul_client_http_address }}"
+        CONSUL_CACERT: "{{ consul_client_ca_certificate_file_path }}"
+        CONSUL_CLIENT_CERT: "{{ consul_client_certificate_file_path }}"
+        CONSUL_CLIENT_KEY: "{{ consul_client_certificate_key_file_path }}"
+        CONSUL_HTTP_TOKEN: "{{ consul_token_fact }}"
+      changed_when: consul_policy_cmd_register.rc != 0
+      register: consul_policy_cmd_register
+
+    - name: "Task[create_policy.yml] - Ensure policy {{ item.name }} file is absent"
+      ansible.builtin.file:
+        path: "{{ item.dest }}"
+        state: absent

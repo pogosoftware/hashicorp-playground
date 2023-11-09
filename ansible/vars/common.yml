@@ -1,9 +1,0 @@
----
-common_os_type: "{{ ansible_system | lower }}"
-common_os_arch: "{{ 'arm64' if ansible_machine == 'arm64' or ansible_machine == 'aarch64' else ansible_machine | lower }}"
-common_network_interface: enp0s1
-
-common_secret_root_path: secrets
-common_cli_users:
-  - name: ansible
-    home_dir: /home/ansible

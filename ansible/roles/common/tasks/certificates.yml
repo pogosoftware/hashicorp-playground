@@ -1,0 +1,38 @@
+---
+- name: Task[certificates.yml] - Ensure certificate directory exist
+  ansible.builtin.file:
+    path: "{{ filename | dirname }}"
+    state: directory
+    owner: "{{ common_certificate_owner }}"
+    group: "{{ common_certificate_owner_group }}"
+    mode: '0755'
+  with_items:
+    - "{{ common_ca_certificate_dest_file_path }}"
+    - "{{ common_certificate_dest_file_path }}"
+    - "{{ common_certificate_key_dest_file_path }}"
+  loop_control:
+    loop_var: filename
+
+- name: Task[certificates.yml] - Ensure ca certificate exist
+  ansible.builtin.copy:
+    src: "{{ common_ca_certificate_src_file_path }}"
+    dest: "{{ common_ca_certificate_dest_file_path }}"
+    owner: "{{ common_certificate_owner }}"
+    group: "{{ common_certificate_owner_group }}"
+    mode: '0400'
+
+- name: Task[certificates.yml] - Ensure certificate exist
+  ansible.builtin.copy:
+    src: "{{ common_certificate_src_file_path }}"
+    dest: "{{ common_certificate_dest_file_path }}"
+    owner: "{{ common_certificate_owner }}"
+    group: "{{ common_certificate_owner_group }}"
+    mode: '0400'
+
+- name: Task[certificates.yml] - Ensure certificate key exist
+  ansible.builtin.copy:
+    src: "{{ common_certificate_key_src_file_path }}"
+    dest: "{{ common_certificate_key_dest_file_path }}"
+    owner: "{{ common_certificate_owner }}"
+    group: "{{ common_certificate_owner_group }}"
+    mode: '0400'

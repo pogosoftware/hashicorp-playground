@@ -1,0 +1,32 @@
+---
+- name: Encryption Key
+  delegate_to: localhost
+  run_once: true
+  become: false
+  block:
+    - name: Task[encryption_key.yml] - Ensure encryption key directory exist
+      ansible.builtin.file:
+        path: "{{ common_encryption_key_file_path | dirname }}"
+        state: directory
+        mode: '0755'
+
+    - name: Task[encryption_key.yml] - Check if encryption key file exist
+      ansible.builtin.stat:
+        path: "{{ common_encryption_key_file_path }}"
+      register: common_encryption_key_info_registry
+
+    - name: Task[encryption_key.yml] - Ensure encryption key exist
+      when: not common_encryption_key_info_registry.stat.exists
+      ansible.builtin.copy:
+        content: "{{ lookup('community.general.random_string', length=32, base64=False) }}"
+        dest: "{{ common_encryption_key_file_path }}"
+        mode: '755'
+
+    - name: Task[encryption_key.yml] - Read Gossip encryption key
+      ansible.builtin.slurp:
+        src: "{{ common_encryption_key_file_path }}"
+      register: common_encryption_key_info_registry
+
+- name: Task[encryption_key.yml] - Ensure excryption key is set as a fact
+  ansible.builtin.set_fact:
+    common_encryption_key_fact: "{{ common_encryption_key_info_registry.content }}"

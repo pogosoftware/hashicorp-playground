@@ -1,0 +1,12 @@
+---
+ansible_user_name: ansible
+ansible_user_group: ansible
+ansible_home_path: /home/ansible
+
+os_type: "{{ ansible_system | lower }}"
+os_arch: "{{ 'arm64' if ansible_machine == 'arm64' or ansible_machine == 'aarch64' else ansible_machine | lower }}"
+network_interface: enp0s1
+
+common_cli_users:
+  - name: ansible
+    home_dir: /home/ansible

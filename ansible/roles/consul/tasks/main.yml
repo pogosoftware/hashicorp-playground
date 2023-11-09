@@ -1,0 +1,99 @@
+---
+- name: Task[main.yml] - Install requirements
+  ansible.builtin.include_tasks:
+    file: requirements.yml
+
+- name: Task[main.yml] - Install Consul
+  ansible.builtin.include_tasks:
+    file: install.yml
+
+- name: Task[main.yml] - Wait till Consul on server nodes is up and running
+  when: consul_role == 'server'
+  ansible.builtin.wait_for:
+    port: "{{ consul_https_port }}"
+    state: started
+    sleep: 5
+
+- name: Task[main.yml] - Bootstrap
+  ansible.builtin.include_tasks:
+    file: bootstrap.yml
+
+- name: Task[main.yml] - Read the Bootstrap token
+  ansible.builtin.include_tasks:
+    file: get_bootstrap_token.yml
+
+- name: Policies
+  when: consul_role == 'server'
+  delegate_to: "{{ groups['consul'] | first }}"
+  run_once: true
+  block:
+    - name: Task[main.yml] - Get all Consul policies
+      ansible.builtin.include_tasks:
+        file: get_existing_policies.yml
+
+    - name: Task[main.yml] - Create Consul policy for agents and dns requests
+      ansible.builtin.include_tasks:
+        file: create_policy.yml
+      with_items: "{{ consul_policies }}"
+
+- name: Tokens
+  block:
+    - name: Task[main.yml] - Ensure token directory exist
+      delegate_to: localhost
+      become: false
+      ansible.builtin.file:
+        path: "{{ consul_tokens_path }}"
+        state: directory
+        mode: '0755'
+
+    - name: Task[main.yml] - Create Consul tokens
+      ansible.builtin.include_tasks:
+        file: create_token.yml
+      with_items: "{{ consul_tokens }}"
+
+    - name: 'Task[main.yml] - Read agent and dns requests token from the file'
+      delegate_to: localhost
+      become: false
+      ansible.builtin.slurp:
+        src: "{{ item.dest }}"
+      register: consul_tokens_file_registry
+      with_items: "{{ consul_tokens }}"
+
+    - name: Task[main.yml] - Ensure agent and dns requests token are set as a facts'
+      ansible.builtin.set_fact:
+        consul_agent_token_fact: "{{ consul_tokens_file_registry.results[0].content | b64decode }}"
+        consul_dns_requests_token_fact: "{{ consul_tokens_file_registry.results[1].content | b64decode }}"
+
+    - name: Task[main.yml] - Ensure agent token is part of the configuration
+      ansible.builtin.lineinfile:
+        path: "{{ consul_user_home_path }}/general.hcl"
+        regexp: '#agent   = ""'
+        line: '    agent   = "{{ consul_agent_token_fact }}"'
+      notify: Restart Consul
+
+    - name: Task[main.yml] - Ensure dns token is part of the configuration
+      ansible.builtin.lineinfile:
+        path: "{{ consul_user_home_path }}/general.hcl"
+        regexp: '#default = ""'
+        line: '    default = "{{ consul_dns_requests_token_fact }}"'
+      notify: Restart Consul
+
+- name: Forward DNS
+  block:
+    - name: Task[main.yml] - Ensure resolved.conf.d directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '755'
+
+    - name: Task[main.yml] - Ensure Consul config for systemd-resolved exists
+      ansible.builtin.template:
+        src: templates/consul.conf.j2
+        dest: /etc/systemd/resolved.conf.d/consul.conf
+        owner: root
+        group: root
+        mode: '644'
+      notify:
+        - Restart systemd-resolved

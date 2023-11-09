@@ -41,7 +41,7 @@
     - name: PKI - Consul
       block:
         - name: PKI - Consul - Ensure server certificates exist
-          when: ansible_hostname in groups['hcp-servers']
+          when: ansible_hostname in groups['hcp_servers']
           ansible.builtin.include_role:
             name: pki
             tasks_from: ownca
@@ -59,7 +59,7 @@
             pki_certificate_not_after: "{{ pki_ca_certificate_valid_for }}"
 
         - name: PKI - Consul - Ensure client certificates exist
-          when: ansible_hostname in groups['hcp-clients']
+          when: ansible_hostname in groups['hcp_clients']
           ansible.builtin.include_role:
             name: pki
             tasks_from: ownca
@@ -77,7 +77,7 @@
             pki_certificate_not_after: "{{ pki_ca_certificate_valid_for }}"
 
         - name: PKI - Consul - Ensure users certificates exist
-          when: ansible_hostname in groups['hcp-servers']
+          when: ansible_hostname in groups['hcp_servers']
           run_once: true
           ansible.builtin.include_role:
             name: pki

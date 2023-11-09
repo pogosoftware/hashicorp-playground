@@ -1,0 +1,7 @@
+---
+- name: Task[requirements.yml] - Ensure unzip and jq are installed
+  ansible.builtin.apt:
+    pkg:
+      - unzip
+      - jq
+    state: present

@@ -1,0 +1,49 @@
+datacenter = "{{ consul_datacenter }}"
+domain     = "{{ consul_domain }}"
+data_dir   = "{{ consul_data_path }}"
+
+retry_join = {{ consul_servers | to_json }}
+
+enable_local_script_checks = {{ consul_enable_local_script_checks | lower }}
+enable_script_checks       = {{ consul_enable_script_checks | lower }}
+
+encrypt = "{{ common_encryption_key_fact }}"
+
+log_level            = "{{ consul_log_level }}"
+log_file             = "{{ consul_log_file }}"
+log_rotate_bytes     = {{ consul_log_rotate_bytes }}
+log_rotate_duration  = "{{ consul_log_rotate_duration }}"
+log_rotate_max_files = {{ consul_log_rotate_max_files }}
+
+acl = {
+  enabled                  = {{ consul_acl_enabled | lower }}
+  default_policy           = "{{ consul_acl_default_policy }}"
+  enable_token_persistence = {{ consul_acl_enable_token_persistence | lower }}
+  tokens = {
+    #default = ""
+    #agent   = ""
+  }
+}
+
+ports {
+  http     = {{ consul_http_port }}
+  https    = {{ consul_https_port }}
+  grpc_tls = {{ consul_grpc_tls_port }}
+}
+
+tls {
+  defaults {
+    ca_file   = "{{ consul_agent_ca_certificate_file_path }}"
+    cert_file = "{{ consul_agent_certificate_file_path }}"
+    key_file  = "{{ consul_agent_certificate_key_file_path }}"
+
+    verify_outgoing = {{ consul_tls_verify_outgoing | lower }}
+    verify_incoming = {{ consul_tls_verify_incoming | lower }}
+  }
+  https {
+    verify_incoming = {{ consul_tls_https_verify_incoming | lower }}
+  }
+  internal_rpc {
+    verify_server_hostname = {{ consul_tls_internal_rpc_verify_server_hostname | lower }}
+  }
+}

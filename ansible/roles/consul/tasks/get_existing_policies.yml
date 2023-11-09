@@ -1,0 +1,15 @@
+---
+- name: Task[get_existing_policies.yml] - Get all Consul policy names
+  ansible.builtin.shell: |
+    set -o pipefail
+    {{ consul_binary_file_path }} acl policy list -format=json | jq -r '.[].Name'
+  args:
+    executable: /bin/bash
+  environment:
+    CONSUL_HTTP_ADDR: "{{ consul_client_http_address }}"
+    CONSUL_CACERT: "{{ consul_client_ca_certificate_file_path }}"
+    CONSUL_CLIENT_CERT: "{{ consul_client_certificate_file_path }}"
+    CONSUL_CLIENT_KEY: "{{ consul_client_certificate_key_file_path }}"
+    CONSUL_HTTP_TOKEN: "{{ consul_token_fact }}"
+  changed_when: consul_policies_cmd_registry.rc != 0
+  register: consul_policies_cmd_registry

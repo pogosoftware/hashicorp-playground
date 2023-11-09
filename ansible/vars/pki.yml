@@ -56,3 +56,9 @@ pki_consul_cli_certificate_extended_key_usage:
   - clientAuth
 pki_consul_cli_certificate_extended_key_usage_critical: true
 pki_consul_cli_certificate_valid_for: '+52w1d' # 1 year
+
+####################################################################################################
+### ANSIBLE
+####################################################################################################
+pki_consul_client_certificate_file_path: "files/certs/consul/ansible.{{ consul_datacenter }}.{{ consul_domain }}.crt"
+pki_consul_client_certificate_key_file_path: "files/certs/consul/ansible.{{ consul_datacenter }}.{{ consul_domain }}.key"

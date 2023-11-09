@@ -1,0 +1,113 @@
+---
+- name: Task[install.yml] - Ensure user and group exist
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: user
+  vars:
+    common_user_name: "{{ consul_user_name }}"
+    common_user_group: "{{ consul_user_group }}"
+    common_user_home_path: "{{ consul_user_home_path }}"
+
+- name: Task[install.yml] - Ensure Consul directories exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ consul_user_name }}"
+    group: "{{ consul_user_group }}"
+    mode: '0755'
+  with_items:
+    - "{{ consul_path }}"
+    - "{{ consul_data_path }}"
+    - "{{ consul_logs_path }}"
+    - "{{ consul_tls_path }}"
+
+- name: Certificates
+  block:
+    - name: Task[install.yml] - Ensure certificates exist
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: certificates
+      vars:
+        common_ca_certificate_src_file_path: "{{ pki_ca_certificate_file_path }}"
+        common_ca_certificate_dest_file_path: "{{ consul_agent_ca_certificate_file_path }}"
+        common_certificate_src_file_path: "{{ pki_consul_agent_certificate_file_path }}"
+        common_certificate_dest_file_path: "{{ consul_agent_certificate_file_path }}"
+        common_certificate_key_src_file_path: "{{ pki_consul_agent_certificate_key_file_path }}"
+        common_certificate_key_dest_file_path: "{{ consul_agent_certificate_key_file_path }}"
+        common_certificate_owner: "{{ consul_user_name }}"
+        common_certificate_owner_group: "{{ consul_user_group }}"
+
+    - name: Task[install.yml] - Ensure client certificates exist
+      when: consul_role == 'server'
+      ansible.builtin.include_role:
+        name: common
+        tasks_from: certificates
+      vars:
+        common_ca_certificate_src_file_path: "{{ pki_ca_certificate_file_path }}"
+        common_ca_certificate_dest_file_path: "{{ consul_client_ca_certificate_file_path }}"
+        common_certificate_src_file_path: "{{ pki_consul_client_certificate_file_path }}"
+        common_certificate_dest_file_path: "{{ consul_client_certificate_file_path }}"
+        common_certificate_key_src_file_path: "{{ pki_consul_client_certificate_key_file_path }}"
+        common_certificate_key_dest_file_path: "{{ consul_client_certificate_key_file_path }}"
+        common_certificate_owner: "{{ consul_client_user_name }}"
+        common_certificate_owner_group: "{{ consul_client_user_group_name }}"
+
+- name: Task[install.yml] - Ensure encryption key fact is present
+  ansible.builtin.include_role:
+    name: common
+    tasks_from: encryption_key
+  vars:
+    common_encryption_key_file_path: "{{ consul_gossip_encryption_key_file_path }}"
+
+- name: Task[install.yml] - Ensure Consul is installed
+  ansible.builtin.unarchive:
+    src: "{{ consul_binary_download_url }}"
+    dest: "{{ consul_binary_path }}"
+    remote_src: true
+
+- name: Task[install.yml] - Ensure general config file exist
+  ansible.builtin.template:
+    src: configs/general.hcl.j2
+    dest: "{{ consul_user_home_path }}/general.hcl"
+    owner: "{{ consul_user_name }}"
+    group: "{{ consul_user_group }}"
+    mode: '0600'
+  notify:
+    - Restart Consul
+
+- name: Task[install.yml] - Ensure server config file exist
+  when: consul_role == 'server'
+  ansible.builtin.template:
+    src: configs/server.hcl.j2
+    dest: "{{ consul_user_home_path }}/server.hcl"
+    owner: "{{ consul_user_name }}"
+    group: "{{ consul_user_group }}"
+    mode: '0600'
+  notify:
+    - Restart Consul
+
+- name: Task[install.yml] - Ensure client config file exist
+  when: consul_role == 'client'
+  ansible.builtin.template:
+    src: configs/client.hcl.j2
+    dest: "{{ consul_user_home_path }}/client.hcl"
+    owner: "{{ consul_user_name }}"
+    group: "{{ consul_user_group }}"
+    mode: '0600'
+  notify:
+    - Restart Consul
+
+- name: Task[install.yml] - Ensure Consul service file exist
+  ansible.builtin.template:
+    src: consul.service.j2
+    dest: "{{ consul_service_path }}/{{ consul_service_filename }}"
+    owner: "{{ consul_user_name }}"
+    group: "{{ consul_user_group }}"
+    mode: '0600'
+
+- name: Task[install.yml] - Ensure Consul service is enabled and reloaded
+  ansible.builtin.systemd:
+    name: "{{ consul_service_filename }}"
+    enabled: true
+    state: started
+    daemon_reload: true
